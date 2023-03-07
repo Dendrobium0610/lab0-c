@@ -153,7 +153,7 @@ bool q_delete_dup(struct list_head *head)
     if (head == NULL || list_empty(head) || list_is_singular(head))
         return false;
 
-    q_sort(head);
+    q_sort(head, false);
 
     struct list_head *node = head->next;
 
@@ -248,7 +248,8 @@ void q_reverseK(struct list_head *head, int k)
 
 static void merge(struct list_head *left,
                   struct list_head *right,
-                  struct list_head *head)
+                  struct list_head *head,
+                  bool descend)
 {
     struct list_head *l = left->next;
     struct list_head *r = right->next;
@@ -256,9 +257,12 @@ static void merge(struct list_head *left,
     while (l != left && r != right) {
         element_t *left_node = list_entry(l, element_t, list);
         element_t *right_node = list_entry(r, element_t, list);
+        struct list_head *target;
 
-        struct list_head *target =
-            (strcmp(left_node->value, right_node->value) > 0) ? r : l;
+        if (descend)
+            target = (strcmp(left_node->value, right_node->value) > 0) ? r : l;
+        else
+            target = (strcmp(left_node->value, right_node->value) < 0) ? r : l;
         struct list_head *next = target->next;
         list_del(target);
         list_add_tail(target, head);
@@ -274,7 +278,7 @@ static void merge(struct list_head *left,
     list_splice_tail(list, head);
 }
 
-static void mergeSort(struct list_head *head)
+static void mergeSort(struct list_head *head, bool descend)
 {
     if (list_is_singular(head)) {
         return;
@@ -294,18 +298,18 @@ static void mergeSort(struct list_head *head)
     list_cut_position(&right, head, head->prev);
     INIT_LIST_HEAD(head);
 
-    mergeSort(&left);
-    mergeSort(&right);
-    merge(&left, &right, head);
+    mergeSort(&left, descend);
+    mergeSort(&right, descend);
+    merge(&left, &right, head, descend);
 }
 
-/* Sort elements of queue in ascending order */
-void q_sort(struct list_head *head)
+/* Sort elements of queue in ascending/descending order */
+void q_sort(struct list_head *head, bool descend)
 {
     if (head == NULL || list_is_singular(head) || list_empty(head))
         return;
 
-    mergeSort(head);
+    mergeSort(head, descend);
 }
 
 /* Remove every node which has a node with a strictly less value anywhere to
@@ -321,7 +325,40 @@ int q_ascend(struct list_head *head)
 int q_descend(struct list_head *head)
 {
     // https://leetcode.com/problems/remove-nodes-from-linked-list/
-    return 0;
+    if (head == NULL || list_empty(head))
+        return 0;
+
+    if (list_is_singular(head))
+        return 1;
+
+    struct list_head *node = head->next;
+
+    while (node != head) {
+        struct list_head *cmp = node->next, *bigger = NULL;
+        while (cmp != head) {
+            element_t *target_node = list_entry(node, element_t, list);
+            element_t *cmp_node = list_entry(cmp, element_t, list);
+
+            if (strcmp(target_node->value, cmp_node->value) < 0) {
+                bigger = cmp;
+                break;
+            }
+            cmp = cmp->next;
+        }
+
+        struct list_head *del = node;
+        while (bigger != NULL && del != bigger) {
+            element_t *del_node = list_entry(del, element_t, list);
+            struct list_head *next = del->next;
+            list_del(del);
+            q_release_element(del_node);
+            del = next;
+        }
+
+        node = (bigger != NULL) ? bigger : node->next;
+    }
+
+    return q_size(head);
 }
 
 /* Merge all the queues into one sorted queue, which is in ascending/descending
