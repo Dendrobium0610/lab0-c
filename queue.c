@@ -260,9 +260,9 @@ static void merge(struct list_head *left,
         struct list_head *target;
 
         if (descend)
-            target = (strcmp(left_node->value, right_node->value) > 0) ? r : l;
-        else
             target = (strcmp(left_node->value, right_node->value) < 0) ? r : l;
+        else
+            target = (strcmp(left_node->value, right_node->value) > 0) ? r : l;
         struct list_head *next = target->next;
         list_del(target);
         list_add_tail(target, head);
